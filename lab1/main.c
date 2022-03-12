@@ -33,25 +33,25 @@ int is_alpha_pt(int c) {
 }
 
 int f_getc(FILE *fp) {
-  int c = fgetc(fp);
-  if (c == EOF) return EOF;
-  if ((c & 0x80) == 0) {
-    // 1 byte :  0xxx x
-    return c;
+  int ch = fgetc(fp);
+  if (ch == EOF) return EOF;
+
+  if ((ch & 0x80) == 0) {
+    return ch;
   }
-  if ((c & 0xE0) == 0xC0) {
-    // 2 bytes : 110x x
-    return ((c & 0x1F) << 6) + (fgetc(fp) & 0x3F);
+
+  int bytes;
+  for (bytes = 1; ch & (0x80 >> bytes); bytes++);
+
+  int mask = (1 << (7 - bytes)) - 1;
+  ch = (ch & mask) << (6*(bytes - 1));
+
+  for (; bytes > 1; bytes--) {
+    int c = fgetc(fp);
+    if (c == EOF) return EOF;
+    ch += (c & 0x3F) << (6*(bytes - 2));
   }
-  if ((c & 0xF0) == 0xE0) { //1100 0010  000 1000 0000    1011 1010
-    // 3 bytes : 1110 x
-    return ((c & 0x0F) << 12) + ((fgetc(fp) & 0x3F) << 6) + (fgetc(fp) & 0x3F);
-  }
-  if ((c & 0xF8) == 0xF0) {
-    // 4 bytes : 1111 0
-    return ((c & 0x07) << 18) + ((fgetc(fp) & 0x3F) << 12) + ((fgetc(fp) & 0x3F) << 6) + (fgetc(fp) & 0x3F);
-  }
-  return 0;
+  return ch;
 }
 
 int main(int argc, char **argv) {
